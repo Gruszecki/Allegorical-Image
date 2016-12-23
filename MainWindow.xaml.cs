@@ -82,7 +82,6 @@ namespace Allegorical_Greyness
                         }
                     }
 
-
                     //Changing bits of original image
                     Bitmap finalImage = new Bitmap(width, height);
                     bool[] boolwidth = new bool[15];  //Space reserved for value of width of 'image to hide'
@@ -178,7 +177,7 @@ namespace Allegorical_Greyness
 
                     SaveFileDialog dialog = new SaveFileDialog();
                     dialog.ShowDialog();
-                    finalImage.Save(dialog.FileName + ".jpg");
+                    finalImage.Save(dialog.FileName + ".png", System.Drawing.Imaging.ImageFormat.Png);
                 }
                 else
                 {
@@ -237,7 +236,7 @@ namespace Allegorical_Greyness
                         color = bitmap.GetPixel(i, height - 1);
                         widthArray[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
                         widthArray[bitmeter++] = (color.G | 1) == color.G ? 1 : 0;
-                       widthArray[bitmeter++] = (color.B | 1) == color.B ? 1 : 0;
+                        widthArray[bitmeter++] = (color.B | 1) == color.B ? 1 : 0;
                     }
                     else
                     {
@@ -263,12 +262,9 @@ namespace Allegorical_Greyness
                 }
 
 
-                //Getting hidden image from intput image
-                Bitmap hiddenImage = new Bitmap(hiddenWidth, hiddenHeight);
-                int[] temp = new int[8];
-                int colorValue = 0;
+                //Getting last bits from image
+                int[] getBitsArray = new int[hiddenHeight * hiddenWidth * 8];
                 bitmeter = 0;
-                int k = 0, l = 0;
 
                 for (int i = 0; i < height; i++)
                 {
@@ -276,79 +272,61 @@ namespace Allegorical_Greyness
                     {
                         color = bitmap.GetPixel(j, i);
 
-                        if (bitmeter <= 5)
+                        if ((hiddenHeight * hiddenWidth * 8) - bitmeter >= 3)
                         {
-                            temp[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
-                            temp[bitmeter++] = (color.G | 1) == color.G ? 1 : 0;
-                            temp[bitmeter++] = (color.B | 1) == color.B ? 1 : 0;
-
-                            if (bitmeter == 8)
-                            {
-                                multiplier = 128;
-                                colorValue = 0;
-                                foreach (var v in temp)
-                                {
-                                    colorValue += multiplier * v;
-                                    multiplier /= 2;
-                                }
-
-                                color = Color.FromArgb(colorValue, colorValue, colorValue);
-                                hiddenImage.SetPixel(l++, k, color);
-                                bitmeter = 0;
-
-                                if (l == hiddenWidth) { k++; l = 0; }
-                            }
+                            getBitsArray[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
+                            getBitsArray[bitmeter++] = (color.G | 1) == color.G ? 1 : 0;
+                            getBitsArray[bitmeter++] = (color.B | 1) == color.B ? 1 : 0;
                         }
-                        else if (bitmeter == 6)
+                         else if ((hiddenHeight * hiddenWidth * 8) - bitmeter == 2)
                         {
-                            temp[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
-                            temp[bitmeter++] = (color.G | 1) == color.G ? 1 : 0;
-
-                            multiplier = 128;
-                            colorValue = 0;
-                            foreach (var v in temp)
-                            {
-                                colorValue += multiplier * v;
-                                multiplier /= 2;
-                            }
-
-                            color = Color.FromArgb(colorValue, colorValue, colorValue);
-                            hiddenImage.SetPixel(l++, k, color);
-                            bitmeter = 0;
-
-                            if (l == hiddenWidth) { k++; l = 0; }
-
-                            temp[bitmeter++] = (color.B | 1) == color.B ? 1 : 0;
+                            getBitsArray[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
+                            getBitsArray[bitmeter++] = (color.G | 1) == color.G ? 1 : 0;
+                        }
+                        else if ((hiddenHeight * hiddenWidth * 8) - bitmeter == 1)
+                        {
+                            getBitsArray[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
                         }
                         else
                         {
-                            temp[bitmeter++] = (color.R | 1) == color.R ? 1 : 0;
-
-                            multiplier = 128;
-                            colorValue = 0;
-                            foreach (var v in temp)
-                            {
-                                colorValue += multiplier * v;
-                                multiplier /= 2;
-                            }
-
-                            color = Color.FromArgb(colorValue, colorValue, colorValue);
-                            hiddenImage.SetPixel(l++, k, color);
-                            bitmeter = 0;
-
-                            if (l == hiddenWidth) { k++; l = 0; }
-
-                            temp[bitmeter++] = (color.G | 1) == color.G ? 1 : 0;
-                            temp[bitmeter++] = (color.B | 1) == color.B ? 1 : 0;
+                            i = height;
+                            j = width;
                         }
-
-                        if (l * k == (hiddenHeight - 1) * (hiddenWidth - 1)) { i = height; j = width; }
                     }
+                }
+                
+                //Changing every 8 bits to values
+                int[] getValuesArray = new int[hiddenHeight*hiddenWidth];
+                int value = 0;
+                bitmeter = 0;
+                multiplier = 128;
+
+                foreach (var v in getBitsArray)
+                {
+                    value += multiplier * v;
+                    multiplier /= 2;
+                    if (multiplier == 0)
+                    {
+                        getValuesArray[bitmeter++] = value;
+                        multiplier = 128;
+                        value = 0;
+                    }
+                }
+
+                //Put values to bitmap
+                Bitmap hiddenImage = new Bitmap(hiddenWidth, hiddenHeight);
+                int h = 0, w = 0;
+                foreach (var v in getValuesArray)
+                {
+                    color = Color.FromArgb(v, v, v);
+                    hiddenImage.SetPixel(w++, h, color);
+
+                    if (w == hiddenWidth) { h++; w = 0; }
                 }
 
                 SaveFileDialog dialog2 = new SaveFileDialog();
                 dialog2.ShowDialog();
-                hiddenImage.Save(dialog2.FileName + ".jpg");
+                hiddenImage.Save(dialog2.FileName + ".png", System.Drawing.Imaging.ImageFormat.Png);
             }
             else
             {
